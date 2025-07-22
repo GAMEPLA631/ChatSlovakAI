@@ -152,6 +152,32 @@
         const loadingIndicator = document.getElementById('loading-indicator');
 
         /**
+         * Function to speak text using Web Speech API.
+         * Tries to find a Slovak voice, otherwise uses default.
+         * @param {string} text The text to speak.
+         */
+        function speakText(text) {
+            if ('speechSynthesis' in window) {
+                const utterance = new SpeechSynthesisUtterance(text);
+                const voices = window.speechSynthesis.getVoices();
+
+                // Try to find a Slovak voice
+                const slovakVoice = voices.find(voice => voice.lang.startsWith('sk'));
+                if (slovakVoice) {
+                    utterance.voice = slovakVoice;
+                } else {
+                    // Fallback to a suitable default if Slovak is not found
+                    // You might want to pick a specific neutral voice here if available
+                    console.warn("Slovak voice not found, using default voice.");
+                }
+
+                window.speechSynthesis.speak(utterance);
+            } else {
+                console.warn("Web Speech API nie je podporované vo vašom prehliadači.");
+            }
+        }
+
+        /**
          * Displays a message or an image in the chat window.
          * @param {string} content The text message or base64 image URL.
          * @param {string} sender 'user' or 'ai'.
@@ -243,6 +269,7 @@
                     result.candidates[0].content.parts.length > 0) {
                     const aiResponseText = result.candidates[0].content.parts[0].text;
                     displayMessage(aiResponseText, 'ai', 'text');
+                    speakText(aiResponseText); // Speak the AI's response
 
                     // Save AI message to Firestore
                     if (isAuthReady && db && userId) {
@@ -321,6 +348,7 @@
                 if (result.predictions && result.predictions.length > 0 && result.predictions[0].bytesBase64Encoded) {
                     const imageUrl = `data:image/png;base64,${result.predictions[0].bytesBase64Encoded}`;
                     displayMessage(imageUrl, 'ai', 'image');
+                    // We typically don't speak image descriptions, but you could add speakText here if desired.
 
                     // Save AI image response to Firestore (only prompt and type, not full base64 if too large)
                     // Storing the base64 directly here for simplicity, but for very large images,
@@ -396,4 +424,5 @@
     </script>
 </body>
 </html>
+
 
