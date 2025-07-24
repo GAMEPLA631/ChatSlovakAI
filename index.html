@@ -106,6 +106,13 @@
         const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
+        // Get references to input and buttons
+        const userInput = document.getElementById('user-input');
+        const sendButton = document.getElementById('send-button');
+        const generateImageButton = document.getElementById('generate-image-button');
+        const chatMessagesDiv = document.getElementById('chat-messages');
+        const loadingIndicator = document.getElementById('loading-indicator');
+
         // Initialize Firebase on window load
         window.onload = async function() {
             try {
@@ -147,10 +154,6 @@
             }
         };
 
-        const chatMessagesDiv = document.getElementById('chat-messages');
-        const userInput = document.getElementById('user-input');
-        const loadingIndicator = document.getElementById('loading-indicator');
-
         /**
          * Function to speak text using Web Speech API.
          * Tries to find a Slovak voice, otherwise uses default.
@@ -167,7 +170,6 @@
                     utterance.voice = slovakVoice;
                 } else {
                     // Fallback to a suitable default if Slovak is not found
-                    // You might want to pick a specific neutral voice here if available
                     console.warn("Slovak voice not found, using default voice.");
                 }
 
@@ -212,6 +214,28 @@
         }
 
         /**
+         * Disables input and buttons to prevent multiple submissions.
+         */
+        function disableInputAndButtons() {
+            userInput.disabled = true;
+            sendButton.disabled = true;
+            generateImageButton.disabled = true;
+            sendButton.classList.add('opacity-50', 'cursor-not-allowed');
+            generateImageButton.classList.add('opacity-50', 'cursor-not-allowed');
+        }
+
+        /**
+         * Enables input and buttons after a response.
+         */
+        function enableInputAndButtons() {
+            userInput.disabled = false;
+            sendButton.disabled = false;
+            generateImageButton.disabled = false;
+            sendButton.classList.remove('opacity-50', 'cursor-not-allowed');
+            generateImageButton.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+
+        /**
          * Sends a text message to the AI and displays the response.
          */
         window.sendMessage = async function() {
@@ -222,6 +246,7 @@
             userInput.value = ''; // Clear input field
 
             loadingIndicator.classList.remove('hidden'); // Show loading indicator
+            disableInputAndButtons(); // Disable input and buttons
 
             // Save user message to Firestore
             if (isAuthReady && db && userId) {
@@ -295,6 +320,7 @@
                 displayMessage("Nastala chyba pri komunikácii s AI. Skús to prosím neskôr.", 'ai', 'text');
             } finally {
                 loadingIndicator.classList.add('hidden'); // Hide loading indicator
+                enableInputAndButtons(); // Enable input and buttons
             }
         };
 
@@ -312,6 +338,7 @@
             userInput.value = '';
 
             loadingIndicator.classList.remove('hidden');
+            disableInputAndButtons(); // Disable input and buttons
 
             // Save image request to Firestore
             if (isAuthReady && db && userId) {
@@ -377,6 +404,7 @@
                 displayMessage("Nastala chyba pri generovaní obrázka. Skús to prosím neskôr.", 'ai', 'text');
             } finally {
                 loadingIndicator.classList.add('hidden');
+                enableInputAndButtons(); // Enable input and buttons
             }
         };
 
@@ -428,5 +456,3 @@
     </script>
 </body>
 </html>
-
-
