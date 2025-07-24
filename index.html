@@ -248,7 +248,7 @@
                 const payload = { contents: chatHistory };
                 // If apiKey is an empty string, the Canvas environment will automatically provide the API key.
                 // If you insert your own API key here, that one will be used.
-                const apiKey = "AIzaSyA7UeU1kIC_0VF5HNCeEhrBkPFoeoIiC4o";
+                const apiKey = "AIzaSyD0OIR4P5gjUBvVJfWUSYZmQGck_aKoVv8";
                 const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
 
                 const response = await fetch(apiUrl, {
@@ -267,7 +267,9 @@
                 if (result.candidates && result.candidates.length > 0 &&
                     result.candidates[0].content && result.candidates[0].content.parts &&
                     result.candidates[0].content.parts.length > 0) {
-                    const aiResponseText = result.candidates[0].content.parts[0].text;
+                    let aiResponseText = result.candidates[0].content.parts[0].text;
+                    // Remove all asterisks from the AI's response
+                    aiResponseText = aiResponseText.replace(/\*/g, '');
                     displayMessage(aiResponseText, 'ai', 'text');
                     speakText(aiResponseText); // Speak the AI's response
 
@@ -411,7 +413,9 @@
                         if (data.type === 'image_response' && data.imageUrl) {
                             displayMessage(data.imageUrl, data.sender, 'image');
                         } else {
-                            displayMessage(data.text, data.sender, 'text');
+                            // Remove asterisks from loaded text messages as well
+                            const cleanedText = data.text.replace(/\*/g, '');
+                            displayMessage(cleanedText, data.sender, 'text');
                         }
                     });
                 }, (error) => {
