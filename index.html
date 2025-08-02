@@ -331,6 +331,7 @@
                 const payload = { contents: chatHistory };
                 // If apiKey is an empty string, the Canvas environment will automatically provide the API key.
                 // If you insert your own API key here, that one will be used.
+                // UISTI SA, ŽE AK VLOŽÍŠ VLASTNÝ API KĽÚČ, JE PLATNÝ.
                 const apiKey = "AIzaSyD0OIR4P5gjUBvVJfWUSYZmQGck_aKoVv8";
                 // Updated API URL to the correct model
                 const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
@@ -343,7 +344,12 @@
 
                 if (!response.ok) {
                     const errorData = await response.json();
-                    throw new Error(`API error: ${response.status} - ${errorData.error.message}`);
+                    console.error("API Error Response:", errorData);
+                    let errorMessage = "Nastala chyba pri komunikácii s AI. Skús to prosím neskôr.";
+                    if (errorData.error && errorData.error.message) {
+                        errorMessage = `API chyba: ${errorData.error.message}`;
+                    }
+                    throw new Error(errorMessage);
                 }
 
                 const result = await response.json();
@@ -376,7 +382,7 @@
                 }
             } catch (error) {
                 console.error("Error communicating with Gemini API:", error);
-                displayMessage("Nastala chyba pri komunikácii s AI. Skús to prosím neskôr.", 'ai', 'text');
+                displayMessage(error.message, 'ai', 'text');
             } finally {
                 loadingIndicator.classList.add('hidden'); // Hide loading indicator
                 enableInputAndButtons(); // Enable input and buttons
@@ -428,7 +434,12 @@
 
                 if (!response.ok) {
                     const errorData = await response.json();
-                    throw new Error(`API error: ${response.status} - ${errorData.error.message}`);
+                    console.error("API Error Response:", errorData);
+                    let errorMessage = "Nastala chyba pri generovaní obrázka. Skús to prosím neskôr.";
+                    if (errorData.error && errorData.error.message) {
+                        errorMessage = `API chyba: ${errorData.error.message}`;
+                    }
+                    throw new Error(errorMessage);
                 }
 
                 const result = await response.json();
@@ -460,7 +471,7 @@
                 }
             } catch (error) {
                 console.error("Error communicating with Image Generation API:", error);
-                displayMessage("Nastala chyba pri generovaní obrázka. Skús to prosím neskôr.", 'ai', 'text');
+                displayMessage(error.message, 'ai', 'text');
             } finally {
                 loadingIndicator.classList.add('hidden');
                 enableInputAndButtons(); // Enable input and buttons
@@ -515,5 +526,6 @@
     </script>
 </body>
 </html>
+
 
 
