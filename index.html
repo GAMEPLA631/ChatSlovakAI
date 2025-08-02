@@ -3,48 +3,103 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ChatSlovak AI</title>
+    <title>Pokročilý ChatSlovak AI</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Font Awesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
-        /* Custom scrollbar for chat window */
+        /* Custom scrollbar for a sleek look */
         .chat-messages::-webkit-scrollbar {
             width: 8px;
         }
         .chat-messages::-webkit-scrollbar-track {
-            background: #2d3748; /* Darker scrollbar track */
+            background: rgba(45, 55, 72, 0.2);
             border-radius: 10px;
         }
         .chat-messages::-webkit-scrollbar-thumb {
-            background: #4a5568; /* Darker scrollbar thumb */
+            background: rgba(107, 114, 128, 0.4);
             border-radius: 10px;
         }
         .chat-messages::-webkit-scrollbar-thumb:hover {
-            background: #6b7280;
+            background: rgba(156, 163, 175, 0.6);
         }
-        /* Custom font */
+
+        /* Animated gradient overlay for an advanced feel */
+        @keyframes subtle-gradient-anim {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
         body {
             font-family: 'Inter', sans-serif;
+            color: #1a202c; /* Default text color changed for better visibility on a light background */
+            background-color: #f7fafc; /* Fallback farba */
+            animation: subtle-gradient-anim 20s ease infinite; /* Aplikácia animácie */
+        }
+
+        /* Background container - will be filled with image via JS */
+        #background-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            z-index: -1; /* Ensure it's behind everything else */
+        }
+
+        /* Okná chatu sú teraz úplne priehľadné, aby bolo vidieť pozadie */
+        .frosted-glass {
+            background-color: rgba(0, 0, 0, 0);
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+        .frosted-messages {
+            background-color: rgba(0, 0, 0, 0);
+        }
+        
+        /* Frosted glass pre vstupný riadok - teraz takmer priehľadný */
+        .frosted-input {
+            backdrop-filter: blur(0px); /* Úplne odstránený blur */
+            -webkit-backdrop-filter: blur(0px);
+            background-color: rgba(30, 41, 59, 0.1); /* Ešte nižšia priehľadnosť */
+        }
+
+        /* Chat bubbles with slightly lower opacity and text color change */
+        .user-bubble {
+            background-color: rgba(59, 130, 246, 0.6); /* Znížená priehľadnosť */
+            color: #fff;
+        }
+
+        .ai-bubble {
+            background-color: rgba(243, 244, 246, 0.8); /* Svetlejšia bublina */
+            color: #1a202c; /* Tmavší text pre lepšiu čitateľnosť */
         }
     </style>
 </head>
-<body class="bg-gray-900 min-h-screen flex flex-col items-center justify-center p-4 text-white">
-    <div class="w-full max-w-3xl flex flex-col items-center mb-8">
-        <!-- Hello Message -->
-        <h2 class="text-4xl font-bold text-blue-300 mb-4">Ahoj, Používateľ!</h2>
+<body class="min-h-screen flex flex-col items-center justify-center p-4">
 
-        <!-- Removed: Gemini Activity Message Box -->
+    <!-- New background container filled by JavaScript -->
+    <div id="background-container"></div>
+
+    <div class="w-full max-w-3xl flex flex-col items-center mb-8 text-white">
+        <!-- Hello Message with a more dynamic feel -->
+        <h2 class="text-4xl font-extrabold text-blue-300 drop-shadow-lg animate-pulse">Ahoj, Používateľ!</h2>
+        <p class="text-xl text-gray-300 mt-2">Dnes tu pre teba mám nový, pokročilý chat.</p>
     </div>
 
-    <div class="bg-gray-800 rounded-3xl shadow-2xl overflow-hidden w-full max-w-3xl flex flex-col h-[70vh] md:h-[60vh]">
-        <!-- Chat Messages Area -->
-        <div id="chat-messages" class="chat-messages flex-1 p-6 overflow-y-auto space-y-4 bg-gray-900">
+    <!-- Main chat container with frosted glass effect -->
+    <div class="frosted-glass rounded-[2rem] shadow-2xl overflow-hidden w-full max-w-3xl flex flex-col h-[75vh] md:h-[65vh] border-2 border-gray-700/60 transition-all duration-300 hover:shadow-glow">
+        <!-- Chat Messages Area with its own frosted glass effect -->
+        <div id="chat-messages" class="chat-messages flex-1 p-6 overflow-y-auto space-y-4 frosted-messages">
             <!-- Initial AI message -->
             <div class="flex justify-start">
-                <div class="bg-gray-700 text-gray-200 p-4 rounded-xl rounded-bl-none shadow-sm max-w-[80%]">
-                    <p>Ahoj! Som ChatSlovak AI. Som tu, aby som ti pomohol. Ako ti dnes môžem pomôcť?</p>
+                <div class="ai-bubble p-4 rounded-xl rounded-bl-none shadow-md max-w-[80%] transition-all duration-300 hover:shadow-lg">
+                    <p>Ahoj! Vítam ťa v novej verzii ChatSlovak AI. Ako ti dnes môžem pomôcť?</p>
                 </div>
             </div>
         </div>
@@ -54,9 +109,9 @@
             <i class="fas fa-spinner fa-spin mr-2"></i> ChatSlovak AI premýšľa...
         </div>
 
-        <!-- Message Input and Buttons -->
-        <div class="p-4 bg-gray-700 border-t border-gray-600 flex items-center rounded-b-3xl">
-            <div class="flex-1 flex items-center bg-gray-600 rounded-full p-2 shadow-inner">
+        <!-- Message Input and Buttons with frosted glass -->
+        <div class="p-4 frosted-input border-t border-gray-600 flex items-center rounded-b-[2rem]">
+            <div class="flex-1 flex items-center bg-gray-600/70 rounded-full p-2 shadow-inner transition-all duration-300 focus-within:bg-gray-500/80">
                 <button class="text-gray-400 hover:text-gray-200 p-2 rounded-full transition duration-200">
                     <i class="fas fa-plus text-lg"></i>
                 </button>
@@ -67,11 +122,11 @@
                     class="flex-1 bg-transparent text-gray-200 placeholder-gray-400 focus:outline-none text-lg px-2"
                     onkeypress="handleKeyPress(event)"
                 >
-                <span class="text-gray-400 text-sm mr-2">Canvas</span>
+                <span class="text-gray-400 text-sm mr-2 opacity-70">Canvas</span>
             </div>
             <button
                 id="send-button"
-                class="ml-4 px-4 py-3 bg-blue-600 text-white rounded-full hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-700 transition duration-300 ease-in-out transform hover:scale-105 shadow-lg"
+                class="ml-4 px-4 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-full hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-700 transition duration-300 ease-in-out transform hover:scale-105 shadow-lg"
                 onclick="sendMessage()"
                 title="Odoslať správu"
             >
@@ -79,7 +134,7 @@
             </button>
             <button
                 id="generate-image-button"
-                class="ml-2 px-4 py-3 bg-purple-600 text-white rounded-full hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-gray-700 transition duration-300 ease-in-out transform hover:scale-105 shadow-lg"
+                class="ml-2 px-4 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-full hover:from-purple-700 hover:to-pink-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-gray-700 transition duration-300 ease-in-out transform hover:scale-105 shadow-lg"
                 onclick="generateImage()"
                 title="Generovať obrázok"
             >
@@ -112,10 +167,17 @@
         const generateImageButton = document.getElementById('generate-image-button');
         const chatMessagesDiv = document.getElementById('chat-messages');
         const loadingIndicator = document.getElementById('loading-indicator');
+        const backgroundContainer = document.getElementById('background-container');
+
+        // URL of the user's uploaded image
+        const backgroundImageUrl = 'https://images.deepai.org/art-image/db646d2e02c148aa891e5d85b3dc1260/ai-a17914.jpg';
 
         // Initialize Firebase on window load
         window.onload = async function() {
             try {
+                // Set the background image using JavaScript
+                backgroundContainer.style.backgroundImage = `url('${backgroundImageUrl}')`;
+
                 if (Object.keys(firebaseConfig).length > 0) {
                     app = initializeApp(firebaseConfig);
                     db = getFirestore(app);
@@ -190,21 +252,17 @@
             messageDiv.classList.add('flex', sender === 'user' ? 'justify-end' : 'justify-start');
 
             const messageBubble = document.createElement('div');
-            // Define common classes for message bubbles
-            const commonClasses = ['p-4', 'rounded-xl', 'shadow-sm', 'max-w-[80%]'];
             // Define sender-specific classes
             const senderClasses = sender === 'user'
-                ? ['bg-blue-600', 'text-white', 'rounded-br-none']
-                : ['bg-gray-700', 'text-gray-200', 'rounded-bl-none'];
+                ? ['user-bubble', 'rounded-br-none']
+                : ['ai-bubble', 'rounded-bl-none'];
 
-            // Add all classes to the message bubble
-            messageBubble.classList.add(...commonClasses, ...senderClasses);
+            // Add common classes and sender-specific classes
+            messageBubble.classList.add('p-4', 'rounded-xl', 'shadow-md', 'max-w-[80%]', ...senderClasses);
 
             if (type === 'text') {
                 messageBubble.innerHTML = `<p>${content}</p>`;
             } else if (type === 'image') {
-                // For images, display the image. The API does not directly support 16:9 aspect ratio.
-                // The image will be displayed as returned by the API.
                 messageBubble.innerHTML = `<img src="${content}" alt="Vygenerovaný obrázok" class="rounded-lg w-full h-auto object-contain">`;
             }
 
@@ -273,7 +331,7 @@
                 const payload = { contents: chatHistory };
                 // If apiKey is an empty string, the Canvas environment will automatically provide the API key.
                 // If you insert your own API key here, that one will be used.
-                const apiKey = "AIzaSyD0OIR4P5gjUBvVJfWUSYZmQGck_aKoVv8";
+                const apiKey = "";
                 const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
 
                 const response = await fetch(apiUrl, {
@@ -358,7 +416,7 @@
             try {
                 // Payload for image generation
                 const payload = { instances: { prompt: prompt }, parameters: { "sampleCount": 1 } };
-                const apiKey = ""; // Canvas will provide this
+                const apiKey = "AIzaSyD0OIR4P5gjUBvVJfWUSYZmQGck_aKoVv8"; // Canvas will provide this
                 const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`;
 
                 const response = await fetch(apiUrl, {
@@ -456,3 +514,4 @@
     </script>
 </body>
 </html>
+
