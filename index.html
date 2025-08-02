@@ -423,7 +423,7 @@
             try {
                 // Payload for image generation
                 const payload = { instances: { prompt: prompt }, parameters: { "sampleCount": 1 } };
-                const apiKey = "AIzaSyD0OIR4P5gjUBvVJfWUSYZmQGck_aKoVv8"; // Canvas will provide this
+                const apiKey = ""; // Canvas will provide this
                 const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`;
 
                 const response = await fetch(apiUrl, {
@@ -526,6 +526,7 @@
     </script>
 </body>
 </html>
+
 
 
 
