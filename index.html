@@ -25,18 +25,17 @@
             background: rgba(156, 163, 175, 0.6);
         }
 
-        /* Animated gradient overlay for an advanced feel */
-        @keyframes subtle-gradient-anim {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
+        /* Nová animácia pre jemné pulzovanie tieňa */
+        @keyframes glow {
+            0% { box-shadow: 0 0 10px rgba(59, 130, 246, 0.4); }
+            50% { box-shadow: 0 0 20px rgba(59, 130, 246, 0.8), 0 0 30px rgba(34, 197, 94, 0.4); }
+            100% { box-shadow: 0 0 10px rgba(59, 130, 246, 0.4); }
         }
 
         body {
             font-family: 'Inter', sans-serif;
-            color: #1a202c; /* Default text color changed for better visibility on a light background */
-            background-color: #f7fafc; /* Fallback farba */
-            animation: subtle-gradient-anim 20s ease infinite; /* Aplikácia animácie */
+            color: #1a202c;
+            background-color: #0d1a29; /* Statická tmavomodrá farba pozadia */
         }
 
         /* Background container - will be filled with image via JS */
@@ -50,13 +49,14 @@
             background-position: center;
             background-repeat: no-repeat;
             background-attachment: fixed;
-            z-index: -1; /* Ensure it's behind everything else */
+            z-index: -1;
         }
 
         /* Okná chatu sú teraz úplne priehľadné, aby bolo vidieť pozadie */
         .frosted-glass {
             background-color: rgba(0, 0, 0, 0);
             border-color: rgba(255, 255, 255, 0.1);
+            animation: glow 4s ease infinite; /* Aplikácia novej animácie */
         }
         .frosted-messages {
             background-color: rgba(0, 0, 0, 0);
@@ -64,20 +64,20 @@
         
         /* Frosted glass pre vstupný riadok - teraz takmer priehľadný */
         .frosted-input {
-            backdrop-filter: blur(0px); /* Úplne odstránený blur */
+            backdrop-filter: blur(0px);
             -webkit-backdrop-filter: blur(0px);
-            background-color: rgba(30, 41, 59, 0.1); /* Ešte nižšia priehľadnosť */
+            background-color: rgba(30, 41, 59, 0.1);
         }
 
         /* Chat bubbles with slightly lower opacity and text color change */
         .user-bubble {
-            background-color: rgba(59, 130, 246, 0.6); /* Znížená priehľadnosť */
+            background-color: rgba(59, 130, 246, 0.6);
             color: #fff;
         }
 
         .ai-bubble {
-            background-color: rgba(243, 244, 246, 0.8); /* Svetlejšia bublina */
-            color: #1a202c; /* Tmavší text pre lepšiu čitateľnosť */
+            background-color: rgba(243, 244, 246, 0.8);
+            color: #1a202c;
         }
 
         pre {
@@ -340,7 +340,7 @@
 
             try {
                 let chatHistory = [];
-                chatHistory.push({ role: "user", parts: [{ text: "Odpovedaj vždy v slovenskom jazyku." }] });
+                chatHistory.push({ role: "user", parts: [{ text: "Odpovedaj vždy v slovenskom jazyku. Nepoužívaj žiadne znaky markdownu ako ** alebo * alebo ###." }] });
                 chatHistory.push({ role: "user", parts: [{ text: message }] });
 
                 const payload = { contents: chatHistory };
@@ -369,7 +369,7 @@
                     result.candidates[0].content && result.candidates[0].content.parts &&
                     result.candidates[0].content.parts.length > 0) {
                     let aiResponseText = result.candidates[0].content.parts[0].text;
-                    aiResponseText = aiResponseText.replace(/\*/g, '');
+                    aiResponseText = aiResponseText.replace(/###/g, '').replace(/\*/g, ''); // Odstránenie `###` a `*`
                     displayMessage(aiResponseText, 'ai', 'text');
                     speakText(aiResponseText);
 
@@ -543,7 +543,7 @@
                         if (data.type === '3d_model_response') {
                             displayMessage(data.text, data.sender, '3d_model');
                         } else {
-                            const cleanedText = data.text.replace(/\*/g, '');
+                            const cleanedText = data.text.replace(/###/g, '').replace(/\*/g, '');
                             displayMessage(cleanedText, data.sender, 'text');
                         }
                     });
@@ -557,6 +557,8 @@
     </script>
 </body>
 </html>
+
+
 
 
 
