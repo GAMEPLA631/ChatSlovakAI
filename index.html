@@ -107,7 +107,7 @@
             <!-- Initial AI message -->
             <div class="flex justify-start">
                 <div class="ai-bubble p-4 rounded-xl rounded-bl-none shadow-md max-w-[80%] transition-all duration-300 hover:shadow-lg">
-                    <p>Ahoj! Vítam ťa v novej verzii ChatSlovak AI. Môžem ti pomôcť s generovaním textu, obrázkov, a teraz už aj s generovaním pokročilých 3D modelov pre hry ako Roblox. Ako ti dnes môžem pomôcť?</p>
+                    <p>Ahoj! Vítam ťa v novej verzii ChatSlovak AI. Môžem ti pomôcť s generovaním textu a 3D modelov pre hry ako Roblox. Ako ti dnes môžem pomôcť?</p>
                 </div>
             </div>
         </div>
@@ -141,14 +141,6 @@
                 <i class="fas fa-paper-plane"></i>
             </button>
             <button
-                id="generate-image-button"
-                class="ml-2 px-4 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-full hover:from-purple-700 hover:to-pink-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-gray-700 transition duration-300 ease-in-out transform hover:scale-105 shadow-lg"
-                onclick="generateImage()"
-                title="Generovať obrázok"
-            >
-                <i class="fas fa-image"></i>
-            </button>
-            <button
                 id="generate-3d-button"
                 class="ml-2 px-4 py-3 bg-gradient-to-r from-green-600 to-teal-600 text-white rounded-full hover:from-green-700 hover:to-teal-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 focus:ring-offset-gray-700 transition duration-300 ease-in-out transform hover:scale-105 shadow-lg"
                 onclick="generate3DModel()"
@@ -180,7 +172,6 @@
         // Get references to input and buttons
         const userInput = document.getElementById('user-input');
         const sendButton = document.getElementById('send-button');
-        const generateImageButton = document.getElementById('generate-image-button');
         const generate3DButton = document.getElementById('generate-3d-button');
         const chatMessagesDiv = document.getElementById('chat-messages');
         const loadingIndicator = document.getElementById('loading-indicator');
@@ -262,7 +253,7 @@
          * Displays a message or an image in the chat window.
          * @param {string} content The text message or base64 image URL.
          * @param {string} sender 'user' or 'ai'.
-         * @param {string} type 'text', 'image' or '3d_model'.
+         * @param {string} type 'text' or '3d_model'.
          */
         function displayMessage(content, sender, type = 'text') {
             const messageDiv = document.createElement('div');
@@ -276,8 +267,6 @@
 
             if (type === 'text') {
                 messageBubble.innerHTML = `<p>${content}</p>`;
-            } else if (type === 'image') {
-                messageBubble.innerHTML = `<img src="${content}" alt="Vygenerovaný obrázok" class="rounded-lg w-full h-auto object-contain">`;
             } else if (type === '3d_model') {
                 try {
                     const modelData = JSON.parse(content);
@@ -305,10 +294,8 @@
         function disableInputAndButtons() {
             userInput.disabled = true;
             sendButton.disabled = true;
-            generateImageButton.disabled = true;
             generate3DButton.disabled = true;
             sendButton.classList.add('opacity-50', 'cursor-not-allowed');
-            generateImageButton.classList.add('opacity-50', 'cursor-not-allowed');
             generate3DButton.classList.add('opacity-50', 'cursor-not-allowed');
         }
 
@@ -318,10 +305,8 @@
         function enableInputAndButtons() {
             userInput.disabled = false;
             sendButton.disabled = false;
-            generateImageButton.disabled = false;
             generate3DButton.disabled = false;
             sendButton.classList.remove('opacity-50', 'cursor-not-allowed');
-            generateImageButton.classList.remove('opacity-50', 'cursor-not-allowed');
             generate3DButton.classList.remove('opacity-50', 'cursor-not-allowed');
         }
 
@@ -414,89 +399,6 @@
         };
 
         /**
-         * Generates an image based on the user's prompt and displays it.
-         */
-        window.generateImage = async function() {
-            const prompt = userInput.value.trim();
-            if (prompt === '') {
-                displayMessage("Prosím, zadajte popis obrázka, ktorý chcete vygenerovať.", 'ai', 'text');
-                return;
-            }
-
-            displayMessage(`Požiadavka na obrázok: "${prompt}"`, 'user', 'text');
-            userInput.value = '';
-
-            loadingIndicator.classList.remove('hidden');
-            disableInputAndButtons();
-
-            if (isAuthReady && db && userId) {
-                try {
-                    const messagesRef = collection(db, `artifacts/${appId}/users/${userId}/messages`);
-                    await setDoc(doc(messagesRef), {
-                        text: `Požiadavka na obrázok: "${prompt}"`,
-                        sender: 'user',
-                        type: 'image_request',
-                        timestamp: serverTimestamp()
-                    });
-                } catch (e) {
-                    console.error("Error adding image request to Firestore: ", e);
-                }
-            }
-
-            try {
-                const payload = { instances: { prompt: prompt }, parameters: { "sampleCount": 1 } };
-                const apiKey = "";
-                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`;
-
-                const response = await fetch(apiUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    console.error("API Error Response:", errorData);
-                    let errorMessage = "Nastala chyba pri generovaní obrázka. Skús to prosím neskôr.";
-                    if (errorData.error && errorData.error.message) {
-                        errorMessage = `API chyba: ${errorData.error.message}`;
-                    }
-                    throw new Error(errorMessage);
-                }
-
-                const result = await response.json();
-
-                if (result.predictions && result.predictions.length > 0 && result.predictions[0].bytesBase64Encoded) {
-                    const imageUrl = `data:image/png;base64,${result.predictions[0].bytesBase64Encoded}`;
-                    displayMessage(imageUrl, 'ai', 'image');
-
-                    if (isAuthReady && db && userId) {
-                        try {
-                            const messagesRef = collection(db, `artifacts/${appId}/users/${userId}/messages`);
-                            await setDoc(doc(messagesRef), {
-                                text: `Vygenerovaný obrázok pre: "${prompt}"`,
-                                imageUrl: imageUrl,
-                                sender: 'ai',
-                                type: 'image_response',
-                                timestamp: serverTimestamp()
-                            });
-                        } catch (e) {
-                            console.error("Error adding AI image response to Firestore: ", e);
-                        }
-                    }
-                } else {
-                    displayMessage("Prepáč, nedokázal som vygenerovať obrázok. Skús to prosím znova s iným popisom.", 'ai', 'text');
-                }
-            } catch (error) {
-                console.error("Error communicating with Image Generation API:", error);
-                displayMessage(error.message, 'ai', 'text');
-            } finally {
-                loadingIndicator.classList.add('hidden');
-                enableInputAndButtons();
-            }
-        };
-
-        /**
          * Generates a structured 3D model response for Roblox.
          */
         window.generate3DModel = async function() {
@@ -580,7 +482,7 @@
                     } catch (e) {
                         console.error("Failed to parse AI response as JSON:", e);
                         displayMessage("Prepáč, formát odpovede AI bol neplatný. Skús to prosím znova.", 'ai', 'text');
-                        return; // Stop execution if JSON is invalid
+                        return; // Stop execution if JSON je invalid
                     }
 
                     displayMessage(modelJson, 'ai', '3d_model');
@@ -638,9 +540,7 @@
                     });
 
                     messages.forEach((data) => {
-                        if (data.type === 'image_response' && data.imageUrl) {
-                            displayMessage(data.imageUrl, data.sender, 'image');
-                        } else if (data.type === '3d_model_response') {
+                        if (data.type === '3d_model_response') {
                             displayMessage(data.text, data.sender, '3d_model');
                         } else {
                             const cleanedText = data.text.replace(/\*/g, '');
@@ -657,6 +557,7 @@
     </script>
 </body>
 </html>
+
 
 
 
