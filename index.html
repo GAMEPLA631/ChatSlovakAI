@@ -79,6 +79,14 @@
             background-color: rgba(243, 244, 246, 0.8); /* Svetlejšia bublina */
             color: #1a202c; /* Tmavší text pre lepšiu čitateľnosť */
         }
+
+        pre {
+            background-color: rgba(255, 255, 255, 0.2);
+            padding: 1rem;
+            border-radius: 0.75rem;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
     </style>
 </head>
 <body class="min-h-screen flex flex-col items-center justify-center p-4">
@@ -99,7 +107,7 @@
             <!-- Initial AI message -->
             <div class="flex justify-start">
                 <div class="ai-bubble p-4 rounded-xl rounded-bl-none shadow-md max-w-[80%] transition-all duration-300 hover:shadow-lg">
-                    <p>Ahoj! Vítam ťa v novej verzii ChatSlovak AI. Ako ti dnes môžem pomôcť?</p>
+                    <p>Ahoj! Vítam ťa v novej verzii ChatSlovak AI. Môžem ti pomôcť s generovaním textu, obrázkov, a teraz už aj s generovaním pokročilých 3D modelov pre hry ako Roblox. Ako ti dnes môžem pomôcť?</p>
                 </div>
             </div>
         </div>
@@ -140,6 +148,14 @@
             >
                 <i class="fas fa-image"></i>
             </button>
+            <button
+                id="generate-3d-button"
+                class="ml-2 px-4 py-3 bg-gradient-to-r from-green-600 to-teal-600 text-white rounded-full hover:from-green-700 hover:to-teal-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 focus:ring-offset-gray-700 transition duration-300 ease-in-out transform hover:scale-105 shadow-lg"
+                onclick="generate3DModel()"
+                title="Generovať 3D model"
+            >
+                <i class="fas fa-cube"></i>
+            </button>
         </div>
     </div>
 
@@ -165,6 +181,7 @@
         const userInput = document.getElementById('user-input');
         const sendButton = document.getElementById('send-button');
         const generateImageButton = document.getElementById('generate-image-button');
+        const generate3DButton = document.getElementById('generate-3d-button');
         const chatMessagesDiv = document.getElementById('chat-messages');
         const loadingIndicator = document.getElementById('loading-indicator');
         const backgroundContainer = document.getElementById('background-container');
@@ -245,25 +262,36 @@
          * Displays a message or an image in the chat window.
          * @param {string} content The text message or base64 image URL.
          * @param {string} sender 'user' or 'ai'.
-         * @param {string} type 'text' or 'image'.
+         * @param {string} type 'text', 'image' or '3d_model'.
          */
         function displayMessage(content, sender, type = 'text') {
             const messageDiv = document.createElement('div');
             messageDiv.classList.add('flex', sender === 'user' ? 'justify-end' : 'justify-start');
 
             const messageBubble = document.createElement('div');
-            // Define sender-specific classes
             const senderClasses = sender === 'user'
                 ? ['user-bubble', 'rounded-br-none']
                 : ['ai-bubble', 'rounded-bl-none'];
-
-            // Add common classes and sender-specific classes
             messageBubble.classList.add('p-4', 'rounded-xl', 'shadow-md', 'max-w-[80%]', ...senderClasses);
 
             if (type === 'text') {
                 messageBubble.innerHTML = `<p>${content}</p>`;
             } else if (type === 'image') {
                 messageBubble.innerHTML = `<img src="${content}" alt="Vygenerovaný obrázok" class="rounded-lg w-full h-auto object-contain">`;
+            } else if (type === '3d_model') {
+                try {
+                    const modelData = JSON.parse(content);
+                    messageBubble.innerHTML = `
+                        <p class="font-bold text-lg">${modelData.modelName}</p>
+                        <p class="mt-2 text-sm">${modelData.description}</p>
+                        <p class="mt-4 font-semibold">Lua kód pre Roblox:</p>
+                        <pre class="mt-2 text-xs overflow-auto"><code class="language-lua">${modelData.robloxLuaCode}</code></pre>
+                        <p class="mt-2 text-xs text-gray-500">Skopíruj tento kód a vlož ho do skriptu v Roblox Studio.</p>
+                    `;
+                } catch (e) {
+                    console.error("Failed to parse 3D model JSON:", e);
+                    messageBubble.innerHTML = `<p>Nastala chyba pri spracovaní 3D modelu.</p>`;
+                }
             }
 
             messageDiv.appendChild(messageBubble);
@@ -278,8 +306,10 @@
             userInput.disabled = true;
             sendButton.disabled = true;
             generateImageButton.disabled = true;
+            generate3DButton.disabled = true;
             sendButton.classList.add('opacity-50', 'cursor-not-allowed');
             generateImageButton.classList.add('opacity-50', 'cursor-not-allowed');
+            generate3DButton.classList.add('opacity-50', 'cursor-not-allowed');
         }
 
         /**
@@ -289,8 +319,10 @@
             userInput.disabled = false;
             sendButton.disabled = false;
             generateImageButton.disabled = false;
+            generate3DButton.disabled = false;
             sendButton.classList.remove('opacity-50', 'cursor-not-allowed');
             generateImageButton.classList.remove('opacity-50', 'cursor-not-allowed');
+            generate3DButton.classList.remove('opacity-50', 'cursor-not-allowed');
         }
 
         /**
@@ -322,18 +354,12 @@
             }
 
             try {
-                // Prepare chat history for the API call
                 let chatHistory = [];
-                // Add a system instruction to ensure Slovak responses
                 chatHistory.push({ role: "user", parts: [{ text: "Odpovedaj vždy v slovenskom jazyku." }] });
                 chatHistory.push({ role: "user", parts: [{ text: message }] });
 
                 const payload = { contents: chatHistory };
-                // If apiKey is an empty string, the Canvas environment will automatically provide the API key.
-                // If you insert your own API key here, that one will be used.
-                // UISTI SA, ŽE AK VLOŽÍŠ VLASTNÝ API KĽÚČ, JE PLATNÝ.
-                const apiKey = "AIzaSyD0OIR4P5gjUBvVJfWUSYZmQGck_aKoVv8";
-                // Updated API URL to the correct model
+                const apiKey = "";
                 const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
 
                 const response = await fetch(apiUrl, {
@@ -358,19 +384,17 @@
                     result.candidates[0].content && result.candidates[0].content.parts &&
                     result.candidates[0].content.parts.length > 0) {
                     let aiResponseText = result.candidates[0].content.parts[0].text;
-                    // Remove all asterisks from the AI's response
                     aiResponseText = aiResponseText.replace(/\*/g, '');
                     displayMessage(aiResponseText, 'ai', 'text');
-                    speakText(aiResponseText); // Speak the AI's response
+                    speakText(aiResponseText);
 
-                    // Save AI message to Firestore
                     if (isAuthReady && db && userId) {
                         try {
                             const messagesRef = collection(db, `artifacts/${appId}/users/${userId}/messages`);
                             await setDoc(doc(messagesRef), {
                                 text: aiResponseText,
                                 sender: 'ai',
-                                type: 'text', // Explicitly set type
+                                type: 'text',
                                 timestamp: serverTimestamp()
                             });
                         } catch (e) {
@@ -384,8 +408,8 @@
                 console.error("Error communicating with Gemini API:", error);
                 displayMessage(error.message, 'ai', 'text');
             } finally {
-                loadingIndicator.classList.add('hidden'); // Hide loading indicator
-                enableInputAndButtons(); // Enable input and buttons
+                loadingIndicator.classList.add('hidden');
+                enableInputAndButtons();
             }
         };
 
@@ -403,16 +427,15 @@
             userInput.value = '';
 
             loadingIndicator.classList.remove('hidden');
-            disableInputAndButtons(); // Disable input and buttons
+            disableInputAndButtons();
 
-            // Save image request to Firestore
             if (isAuthReady && db && userId) {
                 try {
                     const messagesRef = collection(db, `artifacts/${appId}/users/${userId}/messages`);
                     await setDoc(doc(messagesRef), {
                         text: `Požiadavka na obrázok: "${prompt}"`,
                         sender: 'user',
-                        type: 'image_request', // New type for image requests
+                        type: 'image_request',
                         timestamp: serverTimestamp()
                     });
                 } catch (e) {
@@ -421,9 +444,8 @@
             }
 
             try {
-                // Payload for image generation
                 const payload = { instances: { prompt: prompt }, parameters: { "sampleCount": 1 } };
-                const apiKey = ""; // Canvas will provide this
+                const apiKey = "";
                 const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`;
 
                 const response = await fetch(apiUrl, {
@@ -447,19 +469,15 @@
                 if (result.predictions && result.predictions.length > 0 && result.predictions[0].bytesBase64Encoded) {
                     const imageUrl = `data:image/png;base64,${result.predictions[0].bytesBase64Encoded}`;
                     displayMessage(imageUrl, 'ai', 'image');
-                    // We typically don't speak image descriptions, but you could add speakText here if desired.
 
-                    // Save AI image response to Firestore (only prompt and type, not full base64 if too large)
-                    // Storing the base64 directly here for simplicity, but for very large images,
-                    // consider storing them in Firebase Storage and saving the URL.
                     if (isAuthReady && db && userId) {
                         try {
                             const messagesRef = collection(db, `artifacts/${appId}/users/${userId}/messages`);
                             await setDoc(doc(messagesRef), {
                                 text: `Vygenerovaný obrázok pre: "${prompt}"`,
-                                imageUrl: imageUrl, // Store the base64 for display on reload
+                                imageUrl: imageUrl,
                                 sender: 'ai',
-                                type: 'image_response', // New type for image responses
+                                type: 'image_response',
                                 timestamp: serverTimestamp()
                             });
                         } catch (e) {
@@ -474,7 +492,122 @@
                 displayMessage(error.message, 'ai', 'text');
             } finally {
                 loadingIndicator.classList.add('hidden');
-                enableInputAndButtons(); // Enable input and buttons
+                enableInputAndButtons();
+            }
+        };
+
+        /**
+         * Generates a structured 3D model response for Roblox.
+         */
+        window.generate3DModel = async function() {
+            const prompt = userInput.value.trim();
+            if (prompt === '') {
+                displayMessage("Prosím, zadajte popis 3D modelu, ktorý chcete vytvoriť pre Roblox.", 'ai', 'text');
+                return;
+            }
+
+            displayMessage(`Požiadavka na 3D model pre Roblox: "${prompt}"`, 'user', 'text');
+            userInput.value = '';
+
+            loadingIndicator.classList.remove('hidden');
+            disableInputAndButtons();
+
+            if (isAuthReady && db && userId) {
+                try {
+                    const messagesRef = collection(db, `artifacts/${appId}/users/${userId}/messages`);
+                    await setDoc(doc(messagesRef), {
+                        text: `Požiadavka na 3D model pre Roblox: "${prompt}"`,
+                        sender: 'user',
+                        type: '3d_model_request',
+                        timestamp: serverTimestamp()
+                    });
+                } catch (e) {
+                    console.error("Error adding 3D model request to Firestore: ", e);
+                }
+            }
+
+            try {
+                // System instruction for generating structured Roblox data
+                const systemPrompt = `Si špecializovaný asistent pre Roblox Studio. Tvoja úloha je generovať štruktúrované JSON objekty pre 3D modely. Pre každý model, vytvor objekt so "modelName" (názov modelu), "description" (krátky popis) a "robloxLuaCode" (Lua kód pre vytvorenie modelu v Roblox Studio). Tento kód by mal byť funkčný a používať základné primitívne diely a properties.`;
+                const userQuery = `Vytvor Lua kód pre Roblox, ktorý vygeneruje 3D model na základe tohto popisu: ${prompt}`;
+
+                const payload = {
+                    contents: [{ parts: [{ text: userQuery }] }],
+                    systemInstruction: { parts: [{ text: systemPrompt }] },
+                    generationConfig: {
+                        responseMimeType: "application/json",
+                        responseSchema: {
+                            "type": "OBJECT",
+                            "properties": {
+                                "modelName": { "type": "STRING", "description": "Názov 3D modelu." },
+                                "description": { "type": "STRING", "description": "Krátky popis modelu." },
+                                "robloxLuaCode": { "type": "STRING", "description": "Lua kód pre vytvorenie modelu v Roblox Studio." }
+                            },
+                            "required": ["modelName", "description", "robloxLuaCode"]
+                        }
+                    }
+                };
+
+                const apiKey = "AIzaSyAzWkdCBiqlrFZODs2zEichlIWe68Wo2eI";
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    console.error("API Error Response:", errorData);
+                    let errorMessage = "Nastala chyba pri generovaní 3D modelu. Skús to prosím neskôr.";
+                    if (errorData.error && errorData.error.message) {
+                        errorMessage = `API chyba: ${errorData.error.message}`;
+                    }
+                    throw new Error(errorMessage);
+                }
+
+                const result = await response.json();
+
+                if (result.candidates && result.candidates.length > 0 &&
+                    result.candidates[0].content && result.candidates[0].content.parts &&
+                    result.candidates[0].content.parts.length > 0) {
+                    let modelJson = result.candidates[0].content.parts[0].text;
+                    
+                    // Validate that the JSON is valid before passing it to displayMessage
+                    try {
+                        JSON.parse(modelJson);
+                    } catch (e) {
+                        console.error("Failed to parse AI response as JSON:", e);
+                        displayMessage("Prepáč, formát odpovede AI bol neplatný. Skús to prosím znova.", 'ai', 'text');
+                        return; // Stop execution if JSON is invalid
+                    }
+
+                    displayMessage(modelJson, 'ai', '3d_model');
+                    // We typically don't speak code descriptions.
+
+                    if (isAuthReady && db && userId) {
+                        try {
+                            const messagesRef = collection(db, `artifacts/${appId}/users/${userId}/messages`);
+                            await setDoc(doc(messagesRef), {
+                                text: modelJson,
+                                sender: 'ai',
+                                type: '3d_model_response',
+                                timestamp: serverTimestamp()
+                            });
+                        } catch (e) {
+                            console.error("Error adding 3D model response to Firestore: ", e);
+                        }
+                    }
+                } else {
+                    displayMessage("Prepáč, nedokázal som vygenerovať 3D model. Skús to prosím znova s iným popisom.", 'ai', 'text');
+                }
+            } catch (error) {
+                console.error("Error communicating with Gemini API for 3D model:", error);
+                displayMessage(error.message, 'ai', 'text');
+            } finally {
+                loadingIndicator.classList.add('hidden');
+                enableInputAndButtons();
             }
         };
 
@@ -489,7 +622,6 @@
         function loadMessages() {
             if (db && userId && isAuthReady) {
                 const messagesRef = collection(db, `artifacts/${appId}/users/${userId}/messages`);
-                // Query without orderBy to avoid index issues, messages will be sorted client-side
                 const q = query(messagesRef);
 
                 onSnapshot(q, (snapshot) => {
@@ -499,7 +631,6 @@
                         messages.push(doc.data());
                     });
 
-                    // Sort messages client-side by timestamp
                     messages.sort((a, b) => {
                         const timestampA = a.timestamp ? a.timestamp.toMillis() : 0;
                         const timestampB = b.timestamp ? b.timestamp.toMillis() : 0;
@@ -507,11 +638,11 @@
                     });
 
                     messages.forEach((data) => {
-                        // Check message type to display correctly
                         if (data.type === 'image_response' && data.imageUrl) {
                             displayMessage(data.imageUrl, data.sender, 'image');
+                        } else if (data.type === '3d_model_response') {
+                            displayMessage(data.text, data.sender, '3d_model');
                         } else {
-                            // Remove asterisks from loaded text messages as well
                             const cleanedText = data.text.replace(/\*/g, '');
                             displayMessage(cleanedText, data.sender, 'text');
                         }
@@ -526,6 +657,7 @@
     </script>
 </body>
 </html>
+
 
 
 
