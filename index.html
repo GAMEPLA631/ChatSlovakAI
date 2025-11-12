@@ -92,26 +92,14 @@
     <div class="w-full max-w-3xl flex flex-col items-center mb-8 text-white">
         <!-- Hello Message with a more dynamic feel -->
         <h2 class="text-4xl font-extrabold text-blue-300 drop-shadow-lg">Ahoj, Používateľ!</h2>
-        <p class="text-xl text-gray-300 mt-2">Pokročilý chat s pamäťou, podporou obrázkov a hlasovou odozvou.</p>
+        <p class="text-xl text-gray-300 mt-2">Pokročilý chat s pamäťou, podporou obrázkov a hlasovou odozvou (Web Speech API).</p>
     </div>
 
     <!-- Main chat container with frosted glass effect -->
     <div class="frosted-glass rounded-[2rem] shadow-2xl overflow-hidden w-full max-w-3xl flex flex-col h-[75vh] md:h-[65vh] border-2 border-gray-700/60 transition-all duration-300 hover:shadow-glow">
         <!-- Chat Messages Area with its own frosted glass effect -->
         <div id="chat-messages" class="chat-messages flex-1 p-6 overflow-y-auto space-y-4 frosted-messages">
-            <!-- Initial AI message -->
-            <div class="flex justify-start">
-                <div class="ai-bubble p-4 rounded-xl rounded-bl-none shadow-md max-w-[80%] transition-all duration-300 hover:shadow-lg">
-                    <div class="flex items-start justify-between space-x-3">
-                        <p>Ahoj! Vítam ťa v novej verzii ChatSlovak AI. Pamätám si, o čom sa bavíme, a teraz môžem analyzovať aj obrázky, ktoré nahráš. Tiež ti môžem všetky svoje odpovede prečítať. Ako ti dnes môžem pomôcť?</p>
-                        <button onclick="speakResponse('Ahoj! Vítam ťa v novej verzii ChatSlovak AI. Pamätám si, o čom sa bavíme, a teraz môžem analyzovať aj obrázky, ktoré nahráš. Tiež ti môžem všetky svoje odpovede prečítať. Ako ti dnes môžem pomôcť?', this)" 
-                                class="flex-shrink-0 text-gray-600 hover:text-blue-700 p-1 transition duration-200 ml-3" 
-                                title="Prehrať znova">
-                            <i class="fas fa-volume-up"></i>
-                        </button>
-                    </div>
-                </div>
-            </div>
+            <!-- Initial AI message will be rendered by JS/onSnapshot -->
         </div>
 
         <!-- Loading Indicator -->
@@ -176,7 +164,8 @@
         let chatHistory = []; // Pole pre pamäť konverzácie (pre API)
         let selectedImage = null; // Base64 kód obrázka
         let selectedImageMimeType = null;
-        let currentAudio = null; // Pre zastavenie predchádzajúceho prehrávania
+        let synthesis = window.speechSynthesis; // Web Speech API
+        let preferredVoice = null; // Vybraný hlas pre slovenčinu
 
         const systemInstruction = {
             parts: [{
@@ -203,11 +192,37 @@
         // URL of the user's uploaded image for background (using a placeholder)
         const backgroundImageUrl = 'https://images.deepai.org/art-image/db646d2e02c148aa891e5d85b3dc1260/ai-a17914.jpg';
 
+        /**
+         * Načíta dostupné hlasy a vyberie najvhodnejší pre slovenčinu ('sk').
+         */
+        function loadVoices() {
+            const voices = synthesis.getVoices();
+            preferredVoice = voices.find(voice => voice.lang === 'sk-SK' || voice.lang.startsWith('sk'));
+            
+            // Ak sa nenájde slovenský hlas, skús anglický, alebo použi prvý dostupný
+            if (!preferredVoice) {
+                preferredVoice = voices.find(voice => voice.lang === 'en-US');
+            }
+            if (!preferredVoice && voices.length > 0) {
+                preferredVoice = voices[0];
+            }
+        }
+
+        // Načítaj hlasy hneď, ak sú dostupné, inak počkaj na event
+        loadVoices();
+        if (synthesis.onvoiceschanged !== undefined) {
+            synthesis.onvoiceschanged = loadVoices;
+        }
+
+
         // Initialize Firebase on window load
         window.onload = async function() {
             try {
                 // Set the background image using JavaScript
                 backgroundContainer.style.backgroundImage = `url('${backgroundImageUrl}')`;
+                
+                // Opakované načítanie hlasov v prípade asynchrónneho načítania
+                loadVoices();
 
                 if (Object.keys(firebaseConfig).length > 0) {
                     app = initializeApp(firebaseConfig);
@@ -274,6 +289,62 @@
         };
 
         /**
+         * Converts text to speech using the native Web Speech API and plays it.
+         * @param {string} text The text to be spoken.
+         * @param {HTMLElement | null} speakerButton The button element to update (optional).
+         */
+        window.speakResponse = function(text, speakerButton = null) {
+            if (!synthesis) {
+                console.warn("Prehliadač nepodporuje Web Speech API.");
+                return;
+            }
+
+            // Ak už hovorí, zastav predchádzajúci
+            if (synthesis.speaking) {
+                synthesis.cancel();
+            }
+
+            // Reset všetkých ostatných tlačidiel (ak existujú)
+            document.querySelectorAll('[data-speaking="true"]').forEach(btn => {
+                btn.innerHTML = '<i class="fas fa-volume-up"></i>';
+                btn.setAttribute('data-speaking', 'false');
+                btn.disabled = false;
+            });
+            
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.voice = preferredVoice;
+            utterance.lang = 'sk-SK';
+            utterance.rate = 1.0; // Rýchlosť
+
+            if (speakerButton) {
+                speakerButton.innerHTML = '<i class="fas fa-volume-up fa-beat"></i>'; // Animácia prehrávania
+                speakerButton.setAttribute('data-speaking', 'true');
+                speakerButton.disabled = true;
+            }
+
+            utterance.onend = () => {
+                if (speakerButton) {
+                    speakerButton.innerHTML = '<i class="fas fa-volume-up"></i>';
+                    speakerButton.setAttribute('data-speaking', 'false');
+                    speakerButton.disabled = false;
+                }
+            };
+            utterance.onerror = (event) => {
+                console.error('SpeechSynthesis Error:', event);
+                if (speakerButton) {
+                    speakerButton.innerHTML = '<i class="fas fa-exclamation-triangle text-red-500"></i>';
+                    speakerButton.setAttribute('data-speaking', 'false');
+                    speakerButton.disabled = false;
+                }
+                setTimeout(() => {
+                    if (speakerButton) speakerButton.innerHTML = '<i class="fas fa-volume-up"></i>';
+                }, 2000);
+            };
+
+            synthesis.speak(utterance);
+        };
+
+        /**
          * Displays a message or an image in the chat window.
          * @param {string} content The text message or Base64 image URL.
          * @param {string} sender 'user' or 'ai'.
@@ -304,8 +375,8 @@
                     const speakerButton = document.createElement('button');
                     speakerButton.innerHTML = '<i class="fas fa-volume-up"></i>';
                     speakerButton.classList.add('flex-shrink-0', 'text-gray-600', 'hover:text-blue-700', 'p-1', 'transition', 'duration-200', 'ml-3');
-                    speakerButton.onclick = () => speakResponse(cleanedText, speakerButton);
-                    speakerButton.title = "Prečítať odpoveď";
+                    speakerButton.onclick = () => window.speakResponse(cleanedText, speakerButton);
+                    speakerButton.title = "Prehrať znova";
                     speakerButton.setAttribute('data-speaking', 'false'); // Custom state attribute
 
                     aiBubbleContent.appendChild(textP);
@@ -355,180 +426,6 @@
             loadingIndicator.classList.add('hidden');
             loadingText.textContent = 'Premýšľam...'; // Reset default
         }
-
-        // --- TTS Utility Functions ---
-        
-        function base64ToArrayBuffer(base64) {
-            const binaryString = atob(base64);
-            const len = binaryString.length;
-            const bytes = new Uint8Array(len);
-            for (let i = 0; i < len; i++) {
-                bytes[i] = binaryString.charCodeAt(i);
-            }
-            return bytes.buffer;
-        }
-
-        function pcmToWav(pcm16, sampleRate = 24000) {
-            const numChannels = 1;
-            const bytesPerSample = 2; // 16-bit PCM
-            const blockAlign = numChannels * bytesPerSample;
-            const byteRate = sampleRate * blockAlign;
-            const numFrames = pcm16.length;
-            const dataSize = numFrames * bytesPerSample;
-            const buffer = new ArrayBuffer(44 + dataSize);
-            const view = new DataView(buffer);
-
-            // Write RIFF header
-            view.setUint32(0, 0x46464952, false); // "RIFF"
-            view.setUint32(4, 36 + dataSize, true); // File size - 8
-            view.setUint32(8, 0x45564157, false); // "WAVE"
-
-            // Write FMT sub-chunk
-            view.setUint32(12, 0x20746d66, false); // "fmt "
-            view.setUint32(16, 16, true); // Sub-chunk size (16 for PCM)
-            view.setUint16(20, 1, true); // Audio Format (1 = PCM)
-            view.setUint16(22, numChannels, true); // Number of channels
-            view.setUint32(24, sampleRate, true); // Sample rate
-            view.setUint32(28, byteRate, true); // Byte rate
-            view.setUint16(32, blockAlign, true); // Block align
-            view.setUint16(34, bytesPerSample * 8, true); // Bits per sample (16)
-
-            // Write DATA sub-chunk
-            view.setUint32(36, 0x61746164, false); // "data"
-            view.setUint32(40, dataSize, true); // Data size
-
-            // Write PCM data
-            for (let i = 0; i < pcm16.length; i++) {
-                view.setInt16(44 + i * 2, pcm16[i], true);
-            }
-
-            return new Blob([view], { type: 'audio/wav' });
-        }
-        
-        function playAudio(wavBlob, speakerButton = null) {
-            if (currentAudio) {
-                currentAudio.pause();
-                currentAudio.removeAttribute('src'); // Clean up old blob
-            }
-
-            const audioUrl = URL.createObjectURL(wavBlob);
-            const audio = new Audio(audioUrl);
-            currentAudio = audio;
-
-            if (speakerButton) {
-                speakerButton.innerHTML = '<i class="fas fa-volume-up fa-spin"></i>'; // Indicate playing
-                speakerButton.setAttribute('data-speaking', 'true');
-            }
-
-            audio.onended = () => {
-                if (speakerButton) {
-                    speakerButton.innerHTML = '<i class="fas fa-volume-up"></i>'; // Reset icon
-                    speakerButton.setAttribute('data-speaking', 'false');
-                }
-                URL.revokeObjectURL(audioUrl);
-                if (currentAudio === audio) currentAudio = null;
-            };
-
-            audio.onerror = (e) => {
-                console.error("Audio playback error:", e);
-                if (speakerButton) {
-                    speakerButton.innerHTML = '<i class="fas fa-volume-up"></i>';
-                    speakerButton.setAttribute('data-speaking', 'false');
-                }
-            };
-
-            audio.play().catch(e => console.error("Error playing audio:", e));
-        }
-
-        /**
-         * Converts text to speech using the Gemini API and plays it.
-         * @param {string} text The text to be spoken.
-         * @param {HTMLElement | null} speakerButton The button element to update (optional).
-         */
-        window.speakResponse = async function(text, speakerButton = null) {
-            // If the same audio is already speaking, stop it.
-            if (speakerButton && speakerButton.getAttribute('data-speaking') === 'true') {
-                 if (currentAudio) currentAudio.pause();
-                 return;
-            }
-
-            try {
-                if (speakerButton) {
-                    speakerButton.innerHTML = '<i class="fas fa-sync-alt fa-spin"></i>'; // Loading icon
-                    speakerButton.disabled = true;
-                }
-                
-                const payload = {
-                    contents: [{
-                        parts: [{ 
-                            // Add instruction for Slovak pronunciation
-                            text: `Prečítaj nasledujúci text v slovenskej výslovnosti a priateľským tónom: "${text}"`
-                        }]
-                    }],
-                    generationConfig: {
-                        responseModalities: ["AUDIO"],
-                        speechConfig: {
-                            voiceConfig: {
-                                // Kore has a firm, clear tone.
-                                prebuiltVoiceConfig: { voiceName: "Kore" } 
-                            }
-                        }
-                    },
-                    model: "gemini-2.5-flash-preview-tts"
-                };
-
-                const apiKey = "AIzaSyAzWkdCBiqlrFZODs2zEichlIWe68Wo2eI"; 
-                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`;
-
-                const response = await fetch(apiUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-                
-                if (!response.ok) {
-                    throw new Error("TTS API hov zlyhal: " + response.statusText);
-                }
-
-                const result = await response.json();
-                const part = result?.candidates?.[0]?.content?.parts?.[0];
-                const audioData = part?.inlineData?.data;
-                const mimeType = part?.inlineData?.mimeType;
-
-                if (audioData && mimeType && mimeType.startsWith("audio/L16")) {
-                    const sampleRateMatch = mimeType.match(/rate=(\d+)/);
-                    const sampleRate = sampleRateMatch ? parseInt(sampleRateMatch[1], 10) : 24000;
-                    
-                    const pcmData = base64ToArrayBuffer(audioData);
-                    // API returns signed PCM16 audio data.
-                    const pcm16 = new Int16Array(pcmData);
-                    const wavBlob = pcmToWav(pcm16, sampleRate);
-                    
-                    playAudio(wavBlob, speakerButton);
-                } else {
-                    throw new Error("Neplatná audio odpoveď z API.");
-                }
-
-            } catch (error) {
-                console.error("Chyba pri generovaní hlasu:", error);
-                if (speakerButton) {
-                    speakerButton.innerHTML = '<i class="fas fa-exclamation-triangle text-red-500"></i>';
-                    speakerButton.title = "Chyba pri prehrávaní";
-                }
-                setTimeout(() => {
-                    if (speakerButton) {
-                        speakerButton.innerHTML = '<i class="fas fa-volume-up"></i>';
-                        speakerButton.title = "Prečítať odpoveď";
-                        speakerButton.disabled = false;
-                    }
-                }, 2000); // Reset after 2 seconds
-            } finally {
-                if (speakerButton && speakerButton.getAttribute('data-speaking') !== 'true') {
-                    speakerButton.disabled = false;
-                }
-            }
-        }
-        // --- End TTS Utility Functions ---
 
         /**
          * Sends a text or multimodal message to the AI and displays the response.
@@ -593,7 +490,7 @@
                     systemInstruction: systemInstruction,
                 };
                 
-                const apiKey = "AIzaSyAzWkdCBiqlrFZODs2zEichlIWe68Wo2eI"; // API key is handled by the environment
+                const apiKey = "AIzaSyDGZFoDcXgHLrhyfada9ZdlrHTnyrfAn2U"; // API key is handled by the environment
                 const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
 
                 const response = await fetch(apiUrl, {
@@ -629,7 +526,7 @@
 
                     // AUTOMATIC TTS PLAYBACK
                     if (speakerButton) {
-                        speakResponse(aiResponseText, speakerButton);
+                        window.speakResponse(aiResponseText, speakerButton);
                     }
 
                     if (isAuthReady && db && userId) {
@@ -689,7 +586,7 @@
                         });
 
                         // Start with initial AI greeting
-                        const initialGreeting = "Ahoj! Vítam ťa v novej verzii ChatSlovak AI. Pamätám si, o čom sa bavíme, a teraz môžem analyzovať aj obrázky, ktoré nahráš. Tiež ti môžem všetky svoje odpovede prečítať. Ako ti dnes môžem pomôcť?";
+                        const initialGreeting = "Ahoj! Vítam ťa v novej verzii ChatSlovak AI. Pamätám si, o čom sa bavíme, a teraz môžem analyzovať aj obrázky, ktoré nahráš. Hlasová odozva teraz používa natívny hlas tvojho prehliadača. Ako ti dnes môžem pomôcť?";
                         
                         // Manually create the initial greeting with the speaker button
                         const initialMessageDiv = document.createElement('div');
@@ -698,7 +595,7 @@
                             <div class="ai-bubble p-4 rounded-xl rounded-bl-none shadow-md max-w-[80%] transition-all duration-300 hover:shadow-lg">
                                 <div class="flex items-start justify-between space-x-3">
                                     <p>${initialGreeting}</p>
-                                    <button onclick="speakResponse('${initialGreeting.replace(/'/g, "\\'")}', this)" 
+                                    <button onclick="window.speakResponse('${initialGreeting.replace(/'/g, "\\'")}', this)" 
                                             class="flex-shrink-0 text-gray-600 hover:text-blue-700 p-1 transition duration-200 ml-3" 
                                             title="Prehrať znova">
                                         <i class="fas fa-volume-up"></i>
@@ -756,8 +653,6 @@
     </script>
 </body>
 </html>
-
-
 
 
 
